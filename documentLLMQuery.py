@@ -108,11 +108,10 @@ class LLMQA:
     def query(self,query):
         evaluator = ResponseEvaluator(service_context=self.service_context)
         QA_PROMPT_TMPL = (
-            "我们有以下信息. \n"
             "---------------------\n"
             "{context_str}"
             "\n---------------------\n"
-            "请根据以上信息，只用中文回答问题: {query_str}\n"
+            "请用中文回答，只根据以上信息作答，找不到相关信息就回答找不到: {query_str} \n"
         )
         QA_PROMPT = QuestionAnswerPrompt(QA_PROMPT_TMPL)
         response = self.index.query(
