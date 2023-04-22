@@ -1,0 +1,10 @@
+version: "3"
+services:
+  app:
+    image: clarkchan/doc-base
+    volumes:
+    - $PWD:/app
+    environment:
+      OPENAI_API_KEY: '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'
+      ALL_PROXY: 'http://host.docker.internal:1090'
+    command: python3 main.py
