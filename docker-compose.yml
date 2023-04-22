@@ -4,7 +4,64 @@ services:
     image: clarkchan/doc-base
     volumes:
     - $PWD:/app
+    - $PWD/models/embeddings:/root/.cache/torch/sentence_transformers/GanymedeNil_text2vec-large-chinese
     environment:
-      OPENAI_API_KEY: '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'
+      OPENAI_API_KEY: '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'
       ALL_PROXY: 'http://host.docker.internal:1090'
     command: python3 main.py
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            device_ids: ['0']
+            capabilities: [gpu]
+ #   depends_on:
+ #     - "etcd"
+ #     - "minio"
+
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - $PWD/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - $PWD/minio:/minio_data
+    command: minio server /minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  milvus:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.2.6
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - $PWD/milvus:/var/lib/milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+
+networks:
+  default:
+    name: milvus

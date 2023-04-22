@@ -1,0 +1,8 @@
+txt/
+db/
+index_files/
+etcd/
+minio/
+milvus/
+models/
+
