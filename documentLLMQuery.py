@@ -16,6 +16,7 @@ from llama_index import LangchainEmbedding
 import os
 import hashlib
 import sqlite3
+from chatglm_llm import GlmLLM
 
 class LLMQA:
 
@@ -61,7 +62,7 @@ class LLMQA:
         logging.info("using %s model.",self.LLM_name)
         match self.LLM_name:
             case "openAI3.5":
-                self.llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=temperature, model_name="gpt-3.5-turbo"))
+                self.llm_predictor = LLMPredictor(llm=GlmLLM())
             case "openAI3":
                 self.llm_predictor = LLMPredictor(llm=OpenAI(temperature=temperature, model_name="text-ada-001"))
 

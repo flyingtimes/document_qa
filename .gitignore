@@ -5,4 +5,5 @@ etcd/
 minio/
 milvus/
 models/
+__pycache__/
 
