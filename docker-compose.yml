@@ -5,9 +5,9 @@ services:
     volumes:
     - $PWD:/app
     - $PWD/models/embeddings:/root/.cache/torch/sentence_transformers/GanymedeNil_text2vec-large-chinese
-    - $PWD/models/chatglm:/root/.cache/huggingface/hub
+    - $PWD/models/hub:/root/.cache/huggingface/hub
     environment:
-      OPENAI_API_KEY: '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'
+      OPENAI_API_KEY: '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'
       ALL_PROXY: 'http://host.docker.internal:1090'
     command: python3 main.py
     deploy:

@@ -17,4 +17,4 @@ if __name__=="__main__":
 
 
     logging.info("开始查询")
-    logging.info(a.query("高可用情况下，ceph-mon 一般部署多少个节点"))
+    logging.info(a.query("哪些人反对司马光变法"))
