@@ -16,7 +16,35 @@ from llama_index import LangchainEmbedding
 import os
 import hashlib
 import sqlite3
+import re
 #from chatglm_llm import GlmLLM
+# helper functions for chinese text seprator
+MAX_TEXT_INLINE = 100
+def trim_text(text):
+    """
+    Trim text
+    @param text:
+    @return:
+    """
+    text = text.strip()
+    text = re.sub('\s+', ' ', text)
+    text = re.sub('\n+', '\n', text)
+
+    return text
+
+
+def limit_line_length(text):
+    """
+    Limit line length
+    @param text:
+    @return:
+    """
+    lines = []
+    for line in text.split('\n'):
+        chunks = [line[i:i+MAX_TEXT_INLINE] for i in range(0, len(line), MAX_TEXT_INLINE)]
+        lines.extend(chunks)
+    return '\n'.join(lines)
+
 
 class LLMQA:
 
@@ -29,6 +57,11 @@ class LLMQA:
     def loadfiles(self):
             
         self.documents = SimpleDirectoryReader(self.path).load_data()
+        # fix problem at here https://github.com/jerryjliu/llama_index/issues/453
+        for document in self.documents:
+            document.text = limit_line_length(trim_text(document.text))
+
+
         #from llama_index import download_loader
 
         #BeautifulSoupWebReader = download_loader("BeautifulSoupWebReader",custom_path="/app/hubtools")
@@ -39,50 +72,41 @@ class LLMQA:
     # 2.加载模型
     def loadmodel(self,temperature=0.7):
         logging.info("using %s model.",self.LLM_name)
-        match self.LLM_name:
-            case "openAI3.5":
-                self.llm_predictor = LLMPredictor(llm=OpenAI(temperature=temperature))
-            case "openAI3":
-                self.llm_predictor = LLMPredictor(llm=OpenAI(temperature=temperature, model_name="text-ada-001"))
+        if self.LLM_name=='openAI3.5':
+            self.llm_predictor = LLMPredictor(llm=OpenAI(temperature=temperature))
+        elif  self.LLM_name=="openAI3":
+            self.llm_predictor = LLMPredictor(llm=OpenAI(temperature=temperature, model_name="text-ada-001"))
 
     # 3.创建索引
     def createIndex(self,chunk_size_limit=512,index_type="openai"):
-        match index_type:
-            case "openai":
-                self.service_context = ServiceContext.from_defaults(llm_predictor=self.llm_predictor, chunk_size_limit=512)
-                self.index = GPTSimpleVectorIndex.from_documents(self.documents, service_context=self.service_context)
-                self.index.save_to_disk("index_files/index.json")
-                logging.info("索引消耗了%d个token",self.llm_predictor.last_token_usage)
-            case "milvus":
-                self.embed_model = LangchainEmbedding(HuggingFaceEmbeddings(model_name="/root/.cache/torch/sentence_transformers/GanymedeNil_text2vec-large-chinese"))
-                #self.embed_model = LangchainEmbedding(HuggingFaceEmbeddings(model_name="GanymedeNil/text2vec-large-chinese"))
-                #self.service_context = ServiceContext.from_defaults(embed_model=embed_model)
-
-                self.service_context = ServiceContext.from_defaults(embed_model=self.embed_model, llm_predictor=self.llm_predictor, chunk_size_limit=512)
-                self.index = GPTSimpleVectorIndex.from_documents(self.documents, service_context=self.service_context)
-                #elf.index = GPTSimpleVectorIndex.from_documents(self.documents, host="milvus", overwrite=True)
-                #self.index = GPTListIndex(self.documents, embed_model=embed_model)
-                self.index.save_to_disk("index_files/milvus.json")
-                logging.info("使用huggingface做索引")
+        if index_type=="openai":
+            self.service_context = ServiceContext.from_defaults(llm_predictor=self.llm_predictor, chunk_size_limit=512)
+            self.index = GPTSimpleVectorIndex.from_documents(self.documents, service_context=self.service_context)
+            self.index.save_to_disk("index_files/index.json")
+            logging.info("索引消耗了%d个token",self.llm_predictor.last_token_usage)
+        elif index_type=="milvus":
+            # No sentence-transformers model found with name 不影响使用
+            self.embed_model = LangchainEmbedding(HuggingFaceEmbeddings(model_name="/root/.cache/torch/sentence_transformers/GanymedeNil_text2vec-large-chinese"))   
+            self.service_context = ServiceContext.from_defaults(embed_model=self.embed_model, llm_predictor=self.llm_predictor, chunk_size_limit=512)
+            self.index = GPTSimpleVectorIndex.from_documents(self.documents, service_context=self.service_context)
+            self.index.save_to_disk("index_files/milvus.json")
+            logging.info("使用huggingface做索引")
 
     # 4.加载索引
     def loadIndex(self,index_type="openai"):
-        match index_type:
-            case "openai":
-                filename = "index_files/index.json"
-            case "milvus":
-                filename = "index_files/milvus.json"
+        if index_type=="openai":
+            filename = "index_files/index.json"
+        elif index_type=="milvus":
+            filename = "index_files/milvus.json"
         if os.path.exists(filename):
-            match index_type:
-                case "openai":
-                    self.service_context = ServiceContext.from_defaults(llm_predictor=self.llm_predictor, chunk_size_limit=512)
-                    #self.index = GPTSimpleVectorIndex.from_documents(self.documents)
-                    #self.index = GPTSimpleVectorIndex()
-                    self.index= GPTSimpleVectorIndex.load_from_disk(filename)
-                case "milvus":
-                    self.embed_model = LangchainEmbedding(HuggingFaceEmbeddings(model_name="/root/.cache/torch/sentence_transformers/GanymedeNil_text2vec-large-chinese"))
+            logging.info("从文件加载")
+            if index_type=="openai":
+                self.service_context = ServiceContext.from_defaults(llm_predictor=self.llm_predictor, chunk_size_limit=512)
+                self.index= GPTSimpleVectorIndex.load_from_disk(filename)
+            elif index_type=="milvus":
+                self.embed_model = LangchainEmbedding(HuggingFaceEmbeddings(model_name="/root/.cache/torch/sentence_transformers/GanymedeNil_text2vec-large-chinese"))
              #       self.embed_model = LangchainEmbedding(HuggingFaceEmbeddings(model_name="GanymedeNil/text2vec-large-chinese"))
-                    self.service_context = ServiceContext.from_defaults(embed_model=self.embed_model,llm_predictor=self.llm_predictor, chunk_size_limit=512)
+                self.service_context = ServiceContext.from_defaults(embed_model=self.embed_model,llm_predictor=self.llm_predictor, chunk_size_limit=512)
                     self.index = GPTSimpleVectorIndex.load_from_disk(filename)
         else:
             self.createIndex(index_type=index_type)
@@ -100,20 +124,12 @@ class LLMQA:
         query, 
         text_qa_template=QA_PROMPT,
         service_context=self.service_context,
-        similarity_top_k=5,
+        similarity_top_k=7,
         verbose=True
         ) 
+        
         logging.info("查询消耗了%d个token",self.llm_predictor.last_token_usage)
-        formatted_res = response.get_formatted_sources()
-        eval_result = evaluator.evaluate_source_nodes(response)
-        i=0
-        for rs in eval_result:
-            if rs == "YES":
-                logging.info(str(formatted_res[i]))
-            i=i+1
+        logging.info(self.service_context.llama_logger.get_logs())
 
-        logging.info(response.get_formatted_sources())
-        #logging.info(response.source_nodes[0].source_text[:1000] + "...")
-        logging.info(str(eval_result))
 
         return response  

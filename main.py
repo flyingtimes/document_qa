@@ -17,4 +17,4 @@ if __name__=="__main__":
 
 
     logging.info("开始查询")
-    logging.info(a.query("哪些人反对司马光变法"))
+    print("answer:"+str(a.query("哪些人反对司马光变法")))
