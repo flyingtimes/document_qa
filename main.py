@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.INFO,
                    datefmt='%a, %d %b %Y %H:%M:%S +0000')
 if __name__=="__main__":
     logging.info("开始")
-    a = LLMQA(mode='online',LLM_name='openAI3.5',path='txt')
+    a = LLMQA(mode='online',LLM_name='openAI3',path='txt')
     logging.info("加载文件")
     a.loadfiles()
     logging.info("加载模型")
