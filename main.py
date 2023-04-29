@@ -14,7 +14,17 @@ if __name__=="__main__":
     a.loadmodel()
     logging.info("加载索引")
     a.loadIndex(index_type="milvus")
-
-
     logging.info("开始查询")
-    print("answer:"+str(a.query("哪些人反对司马光变法")))
+    while True:
+        try:
+            query = input("请输入问题:")
+            if query=='stop':
+                break
+            elif query=='reload':
+                logging.info("重新加载索引")
+                a.createIndex(index_type='milvus')
+            else:
+                print("thinking...")
+                print("answer:"+str(a.query(query)))
+        except:
+            continue

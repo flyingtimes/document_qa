@@ -2,13 +2,15 @@ import re
 import sqlite3
 import hashlib
 import os
+import transformers
 from chatglm_llm import GlmLLM
 from llama_index import LangchainEmbedding
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from llama_index.evaluation import ResponseEvaluator
 from langchain import OpenAI
 from langchain.chat_models import ChatOpenAI
-from llama_index import GPTSimpleVectorIndex, GPTListIndex, SimpleDirectoryReader, LLMPredictor, ServiceContext, QuestionAnswerPrompt
+from llama_index import GPTSimpleVectorIndex, GPTListIndex, SimpleDirectoryReader, LLMPredictor,  QuestionAnswerPrompt
+from sc import ServiceContext
 import logging
 import sys
 
@@ -56,7 +58,7 @@ class LLMQA:
         self.mode = mode
         self.LLM_name = LLM_name
         self.path = path
-
+        self.gpt2 = None
     # 1.读取路径中的文件到documents
     def loadfiles(self):
 
@@ -65,13 +67,6 @@ class LLMQA:
         for document in self.documents:
             document.text = limit_line_length(trim_text(document.text))
 
-        # from llama_index import download_loader
-
-        # BeautifulSoupWebReader = download_loader("BeautifulSoupWebReader",custom_path="/app/hubtools")
-        # loader = BeautifulSoupWebReader()
-        # self.documents = loader.load_data(urls=['https://news.cctv.com/2023/03/15/ARTIfHlCsQPehxnwHaklLUqP230315.shtml'])
-        # self.documents = loader.load_data(urls=['https://www.msdmanuals.cn/home/disorders-of-nutrition/minerals/wilson-disease'])
-
     # 2.加载模型
     def loadmodel(self, temperature=0.7):
         logging.info("using %s model.", self.LLM_name)
@@ -79,13 +74,26 @@ class LLMQA:
             self.llm_predictor = LLMPredictor(
                 llm=OpenAI(temperature=temperature))
         elif self.LLM_name == "openAI3":
+            self.gpt2 = transformers.GPT2TokenizerFast.from_pretrained("/gpt2")
             self.llm_predictor = LLMPredictor(llm=GlmLLM())
+            
+            responses=[
+                "Action: Python REPL\nAction Input: print(2 + 2)",
+                "Final Answer: 4",
+                "Final Answer: 3",
+                "Final Answer: 2",
+                "Final Answer: 1",
+                "Final Answer: 0",
+                "Final Answer: 9",
+                "Final Answer: 412",
+            ]
+            #self.llm_predictor = LLMPredictor(llm=FakeListLLM(responses=responses))
 
     # 3.创建索引
     def createIndex(self, chunk_size_limit=512, index_type="openai"):
         if index_type == "openai":
             self.service_context = ServiceContext.from_defaults(
-                llm_predictor=self.llm_predictor, chunk_size_limit=512)
+                llm_predictor=self.llm_predictor,chunk_size_limit=512)
             self.index = GPTSimpleVectorIndex.from_documents(
                 self.documents, service_context=self.service_context)
             self.index.save_to_disk("index_files/index.json")
@@ -93,9 +101,9 @@ class LLMQA:
         elif index_type == "milvus":
             # No sentence-transformers model found with name 不影响使用
             self.embed_model = LangchainEmbedding(HuggingFaceEmbeddings(
-                model_name="/root/.cache/torch/sentence_transformers/GanymedeNil_text2vec-large-chinese"))
+                model_name="/GanymedeNil_text2vec-large-chinese"),tokenizer=self.gpt2)
             self.service_context = ServiceContext.from_defaults(
-                embed_model=self.embed_model, llm_predictor=self.llm_predictor, chunk_size_limit=512)
+                embed_model=self.embed_model, llm_predictor=self.llm_predictor,tokenizer=self.gpt2,chunk_size_limit=512)
             self.index = GPTSimpleVectorIndex.from_documents(
                 self.documents, service_context=self.service_context)
             self.index.save_to_disk("index_files/milvus.json")
@@ -114,10 +122,9 @@ class LLMQA:
                     llm_predictor=self.llm_predictor, chunk_size_limit=512)
                 self.index = GPTSimpleVectorIndex.load_from_disk(filename)
             elif index_type == "milvus":
-                self.embed_model = LangchainEmbedding(HuggingFaceEmbeddings(
-                    model_name="/root/.cache/torch/sentence_transformers/GanymedeNil_text2vec-large-chinese"))
+                self.embed_model = LangchainEmbedding(HuggingFaceEmbeddings(model_name="/GanymedeNil_text2vec-large-chinese"),tokenizer=self.gpt2)
                 self.service_context = ServiceContext.from_defaults(
-                    embed_model=self.embed_model, llm_predictor=self.llm_predictor, chunk_size_limit=512)
+                    embed_model=self.embed_model, llm_predictor=self.llm_predictor,tokenizer=self.gpt2,chunk_size_limit=512)
                 self.index = GPTSimpleVectorIndex.load_from_disk(filename)
         else:
             self.createIndex(index_type=index_type)

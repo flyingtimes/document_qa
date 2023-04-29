@@ -5,7 +5,7 @@ import torch
 class GlmLLM(LLM):
     model_name = "/model-dir"
     tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True,trust_remote_code=True)
-    model = AutoModel.from_pretrained(model_name, local_files_only=True,trust_remote_code=True).half().quantize(4).cuda()
+    model = AutoModel.from_pretrained(model_name, local_files_only=True,trust_remote_code=True).float()
     history = []
     max_token = 256
     temperature = 0.7

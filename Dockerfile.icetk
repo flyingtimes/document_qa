@@ -1,0 +1,5 @@
+FROM clarkchan/doc-base
+RUN pip3 install icetk
+COPY utils.py /usr/local/lib/python3.10/site-packages/llama_index/utils.py
+COPY token_counter.py /usr/local/lib/python3.10/site-packages/llama_index/token_counter/token_counter.py
+WORKDIR /app
