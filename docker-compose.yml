@@ -11,7 +11,7 @@ services:
     environment:
       OPENAI_API_KEY: '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'
       ALL_PROXY: 'http://host.docker.internal:1090'
-    command: python3 -u main.py
+    command: python3 main.py
     deploy:
       resources:
         reservations:

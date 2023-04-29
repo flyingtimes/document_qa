@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO,
 
 # from chatglm_llm import GlmLLM
 # helper functions for chinese text seprator
-MAX_TEXT_INLINE = 100
+MAX_TEXT_INLINE = 250
 
 
 def trim_text(text):
@@ -46,10 +46,9 @@ def limit_line_length(text):
     """
     lines = []
     for line in text.split('\n'):
-        chunks = [line[i:i+MAX_TEXT_INLINE]
-                  for i in range(0, len(line), MAX_TEXT_INLINE)]
+        chunks = [line[i:i+MAX_TEXT_INLINE] for i in range(0, len(line), MAX_TEXT_INLINE)]
         lines.extend(chunks)
-    return '\n'.join(lines)
+    return '\n\n'.join(lines)
 
 
 class LLMQA:
@@ -61,11 +60,10 @@ class LLMQA:
         self.gpt2 = None
     # 1.读取路径中的文件到documents
     def loadfiles(self):
-
         self.documents = SimpleDirectoryReader(self.path).load_data()
         # fix problem at here https://github.com/jerryjliu/llama_index/issues/453
-        for document in self.documents:
-            document.text = limit_line_length(trim_text(document.text))
+        #for document in self.documents:
+        #    document.text = limit_line_length(trim_text(document.text))
 
     # 2.加载模型
     def loadmodel(self, temperature=0.7):
