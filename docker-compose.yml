@@ -4,12 +4,13 @@ services:
     image: clarkchan/doc-base
     volumes:
     - $PWD:/app
-    - $PWD/models/embeddings:/root/.cache/torch/sentence_transformers/GanymedeNil_text2vec-large-chinese
-    - $PWD/models/hub:/root/.cache/huggingface/hub
-    - $PWD/../ChatGLM-6B/model-dir:/model-dir
+    - $PWD/models/embeddings:/GanymedeNil_text2vec-large-chinese
+    - $PWD/models/gpt2:/gpt2
+    - $PWD/models/chatglm-6b-int4-qe-slim:/model-dir
+    - $PWD/models/cache:/root/.cache
     environment:
       OPENAI_API_KEY: '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'
-      ALL_PROXY: 'http://host.docker.internal:10809'
+      ALL_PROXY: 'http://host.docker.internal:1090'
     command: python3 -u main.py
     deploy:
       resources:
